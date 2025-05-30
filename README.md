@@ -1,3 +1,10 @@
+*FORK with some NMEA parsing changes*
+Such that the parser:
+  * Doesn't bail when there is malformed NMEA - continues to the next sentence
+  * Handles NMEA seperated by \r as well as \n
+
+---
+
 # GPXSee
 GPXSee is a Qt-based GPS log file viewer and analyzer that supports all common
 GPS log file formats.
