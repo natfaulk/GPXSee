@@ -4,6 +4,8 @@
 #include "nmeaparser.h"
 
 
+static qint64 ReadLine(QFile *file, char* line, qint64 maxlen);
+
 static bool validSentence(const char  *line, int len)
 {
 	const char *lp;
@@ -491,35 +493,33 @@ bool NMEAParser::parse(QFile *file, QList<TrackData> &tracks,
 	char line[80 + 2/*CRLF*/ + 1/*'\0'*/ + 1/*extra byte for limit check*/];
 	SegmentData segment;
 	CTX ctx;
-
+	
 
 	_errorLine = 1;
 	_errorString.clear();
 
 	while (!file->atEnd()) {
-		len = file->readLine(line, sizeof(line));
+		len = ReadLine(file, line, sizeof(line));
 
 		if (len < 0) {
 			_errorString = "I/O error";
 			return false;
-		} else if (len >= (qint64)sizeof(line) - 1) {
-			_errorString = "Line limit exceeded";
-			return false;
-		}
+		} else if (len >= (qint64)sizeof(line) - 1)
+		 	continue;
 
 		if (validSentence(line, len)) {
 			if (!memcmp(line + 3, "RMC,", 4)) {
 				if (!readRMC(ctx, line + 7, len - 7, segment))
-					return false;
+					continue;
 			} else if (!memcmp(line + 3, "GGA,", 4)) {
 				if (!readGGA(ctx, line + 7, len - 7, segment))
-					return false;
+					continue;
 			} else if (!memcmp(line + 3, "WPL,", 4)) {
 				if (!readWPL(line + 7, len - 7, waypoints))
-					return false;
+					continue;
 			} else if (!memcmp(line + 3, "ZDA,", 4)) {
 				if (!readZDA(ctx, line + 7, len - 7))
-					return false;
+					continue;
 			}
 		}
 
@@ -538,4 +538,23 @@ bool NMEAParser::parse(QFile *file, QList<TrackData> &tracks,
 	}
 
 	return true;
+}
+
+static qint64 ReadLine(QFile *file, char* line, qint64 maxlen)
+{
+	qint64 len = 0;
+	char c;
+
+	while (len < (maxlen - 1) && file->getChar(&c)) {
+		if (c == '\n' || c =='\r'){
+			line[len] = '\0';
+			return len;
+		} else {
+			line[len] = c;
+			++len;
+		}
+	}
+
+	line[len] = '\0';
+	return len;
 }
